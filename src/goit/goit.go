@@ -188,10 +188,20 @@ func handleAPIRepository(w http.ResponseWriter, r *http.Request) {
 
 	repository := strings.SplitN(r.URL.Path, "/", 3)[2]
 	path := filepath.Join(config.Git_base_dir, repository)
+
+	repositories = make(map[string]*GitRepo)
+	findRepositories()
+
 	if isExcluded(path) {
 		fmt.Fprintf(w, JSONAPIError)
 		return
 	}
+
+	if _, ok := repositories[path]; !ok {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
+
 	repo, ok := NewRepo(path)
 	if ok {
 		fmt.Fprintf(w, repo.Json())
@@ -207,9 +217,17 @@ func handleAPIRepositoryTip(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.SplitN(r.URL.Path, "/", 4)
 	branch := parts[2]
-	repository := parts[3]
+	path := filepath.Join(config.Git_base_dir, parts[3])
 
-	if isExcluded(repository) {
+	if isExcluded(path) {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
+
+	repositories = make(map[string]*GitRepo)
+	findRepositories()
+
+	if _, ok := repositories[path]; !ok {
 		fmt.Fprintf(w, JSONAPIError)
 		return
 	}
@@ -220,7 +238,6 @@ func handleAPIRepositoryTip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := filepath.Join(config.Git_base_dir, repository)
 	if repo, ok := NewRepo(path); ok {
 		if tip, ok := repo.LastCommit(); ok {
 			fmt.Fprintf(w, "["+repo.Json()+","+tip.Json()+"]")
@@ -240,6 +257,20 @@ func handleAPIShow(w http.ResponseWriter, r *http.Request) {
 	branch := parts[2]
 	sha := parts[3]
 	repository := parts[4]
+	path := filepath.Join(config.Git_base_dir, repository)
+
+	repositories = make(map[string]*GitRepo)
+	findRepositories()
+
+	if isExcluded(path) {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
+
+	if _, ok := repositories[path]; !ok {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
 
 	if branch != "master" {
 		// TODO: support other branches.
@@ -247,7 +278,6 @@ func handleAPIShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := filepath.Join(config.Git_base_dir, repository)
 	if repo, ok := NewRepo(path); ok {
 		if b, err := json.Marshal(repo.Show(sha)); err == nil {
 			fmt.Fprintf(w, string(b))
@@ -265,8 +295,21 @@ func handleAPIHeads(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.SplitN(r.URL.Path, "/", 3)
 	repository := parts[2]
-
 	path := filepath.Join(config.Git_base_dir, repository)
+
+	repositories = make(map[string]*GitRepo)
+	findRepositories()
+
+	if isExcluded(path) {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
+
+	if _, ok := repositories[path]; !ok {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
+
 	if repo, ok := NewRepo(path); ok {
 		if b, err := json.Marshal(repo.Heads()); err == nil {
 			fmt.Fprintf(w, "["+repo.Json()+",")
@@ -291,8 +334,14 @@ func handleAPICommits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	repository := parts[4]
+	path := filepath.Join(config.Git_base_dir, repository)
 
-	if isExcluded(repository) {
+	if isExcluded(path) {
+		fmt.Fprintf(w, JSONAPIError)
+		return
+	}
+
+	if _, ok := repositories[path]; !ok {
 		fmt.Fprintf(w, JSONAPIError)
 		return
 	}
@@ -303,7 +352,6 @@ func handleAPICommits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := filepath.Join(config.Git_base_dir, repository)
 	if repo, ok := NewRepo(path); ok {
 		infos, ok := repo.LastCommitsN(numCommits)
 		if ok != true {
