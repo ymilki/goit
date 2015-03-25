@@ -123,7 +123,7 @@ func loadRepositoriesFromGitPath() {
 func loadRepositoriesFromProjectsFile() {
 	for line := range readLines(config.Git_projects_file) {
 		path := strings.Split(line, " ")[0]
-		if repo, ok := NewRepo(path); ok {
+		if repo, ok := NewRepo(filepath.Join(config.Git_base_dir, path)); ok {
 			addRepository(repo)
 		}
 	}
